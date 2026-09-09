@@ -1,5 +1,5 @@
-import { PolarPopConsole } from "@/components/polar-pop-console"
+import { PopLogin } from "@/components/pop-login"
 
 export default function Home() {
-  return <PolarPopConsole />
+  return <PopLogin />
 }
