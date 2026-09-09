@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Control POP — Empresas Polar
 
-## Getting Started
+Control POP es una base operativa para registrar y seguir el material POP desde el inventario SAP hasta el punto de venta, vinculando entrega, vendedor, ubicación, campaña, lead e ingreso atribuible.
 
-First, run the development server:
+La interfaz usa Next.js 16 App Router, TypeScript, Tailwind CSS v4 y shadcn/ui. La dirección visual está basada en geometría cuadrada, el azul corporativo `#00338D` y el acento de operación `#F4C542`.
+
+## Desarrollo
+
+Requisitos: Node.js 20.9+ y pnpm.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Otros comandos:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm lint
+pnpm build
+pnpm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Sistema de UI
 
-## Learn More
+Los componentes shadcn viven en `components/ui` y se pueden añadir con:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm dlx shadcn@latest add <component>
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+La skill local [`polar-pop-console`](./.agents/skills/polar-pop-console/SKILL.md) define las decisiones de componentes, SOLID, validación obligatoria de inputs, accesibilidad, responsive, SAP como sistema de registro y el estándar visual del producto. Léela antes de crear o modificar una interfaz.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estructura
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `app/`: rutas y estilos globales del App Router.
+- `components/ui/`: primitives generados por shadcn/ui.
+- `components/polar-pop-console.tsx`: consola interactiva de control POP.
+- `lib/pop-model.ts`: modelo tipado, datos semilla y utilidades de negocio.
+- `lib/utils.ts`: helper `cn` basado en `clsx` y `tailwind-merge`.
+- `.agents/skills/`: reglas específicas de trabajo para el proyecto.
