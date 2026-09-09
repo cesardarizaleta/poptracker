@@ -4,7 +4,6 @@ import Image from "next/image"
 import { Suspense, useEffect, useState, type FormEvent } from "react"
 import {
   ArrowRight,
-  ChevronDown,
   Eye,
   EyeOff,
   KeyRound,
@@ -268,22 +267,6 @@ export function PopLogin() {
               </Button>
             </form>
 
-            <details className="mt-7 border-t border-[#e5ebf4] pt-5 group">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[#71839b] outline-none transition-colors hover:text-[#00338d] focus-visible:text-[#00338d] [&::-webkit-details-marker]:hidden">
-                Perfiles de acceso
-                <ChevronDown className="size-4 transition-transform duration-200 group-open:rotate-180" />
-              </summary>
-              <div className="mt-3 grid gap-3 text-xs text-[#526782] sm:grid-cols-2">
-                <div className="border border-[#e5ebf4] p-3">
-                  <p className="font-bold text-[#00338d]">Vendedor</p>
-                  <p className="mt-2 leading-5">Acceso administrado desde Supabase Auth.</p>
-                </div>
-                <div className="border border-[#e5ebf4] p-3">
-                  <p className="font-bold text-[#00338d]">Coordinador</p>
-                  <p className="mt-2 leading-5">Acceso administrado desde Supabase Auth.</p>
-                </div>
-              </div>
-            </details>
           </CardContent>
         </Card>
       </section>

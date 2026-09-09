@@ -36,6 +36,8 @@ import { createClient } from "@/lib/client"
 import {
   campaigns,
   formatNumber,
+  getCampaignImage,
+  getMaterialImage,
   initialMaterials,
   type Campaign,
   type Material,
@@ -103,10 +105,19 @@ function CampaignOption({
       type="button"
       variant="outline"
     >
-      <span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${selected ? "text-[#f4c542]" : "text-[#71839b]"}`}>
-        {campaign.brand}
+      <span className="flex w-full items-center gap-3">
+        {campaign.imageUrl ? (
+          <span className="relative size-12 shrink-0 overflow-hidden border border-white/20 bg-white/10">
+            <Image alt={`Producto principal de la campaña ${campaign.name}`} className="object-contain" fill sizes="48px" src={campaign.imageUrl} />
+          </span>
+        ) : null}
+        <span className="min-w-0">
+          <span className={`block text-[10px] font-bold uppercase tracking-[0.14em] ${selected ? "text-[#f4c542]" : "text-[#71839b]"}`}>
+            {campaign.brand}
+          </span>
+          <span className="block text-sm font-bold leading-5">{campaign.name}</span>
+        </span>
       </span>
-      <span className="text-sm font-bold leading-5">{campaign.name}</span>
       <span className={`font-mono text-[10px] ${selected ? "text-white/65" : "text-[#71839b]"}`}>
         {campaign.coverage}% cobertura · {formatNumber(campaign.delivered)} entregados
       </span>
@@ -137,9 +148,16 @@ function MaterialOption({
       type="button"
       variant="outline"
     >
-      <span className="min-w-0">
-        <span className="block truncate text-sm font-bold">{material.name}</span>
-        <span className="mt-1 block font-mono text-[10px] text-[#71839b]">{material.sku}</span>
+      <span className="flex min-w-0 items-center gap-3">
+        {material.imageUrl ? (
+          <span className="relative size-14 shrink-0 overflow-hidden border border-[#d6e1f0] bg-[#f4f7fb]">
+            <Image alt={`Foto del producto ${material.name}`} className="object-cover" fill sizes="56px" src={material.imageUrl} />
+          </span>
+        ) : null}
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-bold">{material.name}</span>
+          <span className="mt-1 block font-mono text-[10px] text-[#71839b]">{material.sku}</span>
+        </span>
       </span>
       <span className="shrink-0 text-right">
         <span className="block font-mono text-sm font-bold text-[#00338d]">{formatNumber(available)}</span>
@@ -472,12 +490,12 @@ export function SellerPortal({ onLogout, profile }: SellerPortalProps) {
       const [campaignResponse, materialResponse, deliveryResponse] = await Promise.all([
         supabase
           .from("campaigns")
-          .select("id, name, brand, status, coverage, leads, revenue, delivered, goal")
+          .select("id, name, brand, status, coverage, leads, revenue, delivered, goal, image_url, brief_image_url")
           .eq("status", "Activa")
           .order("name"),
         supabase
           .from("materials")
-          .select("id, name, sku, category, available, reserved, reorder_point, campaign_id")
+          .select("id, name, sku, category, available, reserved, reorder_point, campaign_id, image_url")
           .order("name"),
         supabase
           .from("deliveries")
@@ -495,15 +513,50 @@ export function SellerPortal({ onLogout, profile }: SellerPortalProps) {
 
       const campaignRows = campaignResponse.data ?? []
       const materialRows = materialResponse.data ?? []
-      const mappedCampaigns = campaignRows.map((campaign) => ({
-        ...campaign,
-        status: campaign.status as Campaign["status"],
-      }))
-      const mappedMaterials = materialRows.map((material) => ({
-        ...material,
-        reorderPoint: material.reorder_point,
-        campaign: material.campaign_id,
-      }))
+      const mappedCampaigns = [
+        ...ACTIVE_CAMPAIGNS.map((localCampaign) => {
+          const remoteCampaign = campaignRows.find((campaign) => campaign.id === localCampaign.id)
+          return remoteCampaign
+            ? {
+                ...localCampaign,
+                ...remoteCampaign,
+                status: remoteCampaign.status as Campaign["status"],
+                imageUrl: getCampaignImage(localCampaign.id, remoteCampaign.image_url),
+                briefImageUrl: remoteCampaign.brief_image_url ?? localCampaign.briefImageUrl,
+              }
+            : localCampaign
+        }),
+        ...campaignRows
+          .filter((campaign) => !ACTIVE_CAMPAIGNS.some((localCampaign) => localCampaign.id === campaign.id))
+          .map((campaign) => ({
+            ...campaign,
+            status: campaign.status as Campaign["status"],
+            imageUrl: getCampaignImage(campaign.id, campaign.image_url),
+            briefImageUrl: campaign.brief_image_url ?? undefined,
+          })),
+      ]
+      const mappedMaterials = [
+        ...initialMaterials.map((localMaterial) => {
+          const remoteMaterial = materialRows.find((material) => material.id === localMaterial.id)
+          return remoteMaterial
+            ? {
+                ...localMaterial,
+                ...remoteMaterial,
+                reorderPoint: remoteMaterial.reorder_point,
+                campaign: remoteMaterial.campaign_id ?? localMaterial.campaign,
+                imageUrl: getMaterialImage(localMaterial.id, remoteMaterial.image_url),
+              }
+            : localMaterial
+        }),
+        ...materialRows
+          .filter((material) => !initialMaterials.some((localMaterial) => localMaterial.id === material.id))
+          .map((material) => ({
+            ...material,
+            reorderPoint: material.reorder_point,
+            campaign: material.campaign_id ?? "Sin campaña",
+            imageUrl: getMaterialImage(material.id, material.image_url),
+          })),
+      ]
       const mappedDeliveries = (deliveryResponse.data ?? []).map((delivery) => ({
         campaign: mappedCampaigns.find((campaign) => campaign.id === delivery.campaign_id)?.name ?? delivery.campaign_id,
         material: mappedMaterials.find((material) => material.id === delivery.material_id)?.name ?? delivery.material_id,

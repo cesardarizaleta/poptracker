@@ -285,6 +285,11 @@ header button[aria-label="Notificaciones"] > span {
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* La sincronización queda fuera del alcance de esta versión del panel. */
+button:has(.lucide-refresh-cw) {
+  display: none;
+}
+
 button:hover .motion-icon,
 [role="button"]:hover .motion-icon {
   transform: translateX(2px) rotate(-4deg);

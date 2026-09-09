@@ -23,6 +23,8 @@ create table if not exists public.campaigns (
   revenue numeric not null default 0 check (revenue >= 0),
   delivered integer not null default 0 check (delivered >= 0),
   goal integer not null default 0 check (goal >= 0),
+  image_url text,
+  brief_image_url text,
   created_at timestamptz not null default timezone('utc', now())
 );
 
@@ -35,6 +37,7 @@ create table if not exists public.materials (
   reserved integer not null default 0 check (reserved >= 0 and reserved <= available),
   reorder_point integer not null default 0 check (reorder_point >= 0),
   campaign_id text references public.campaigns(id),
+  image_url text,
   created_at timestamptz not null default timezone('utc', now())
 );
 
@@ -50,6 +53,10 @@ create table if not exists public.deliveries (
   status text not null default 'Pendiente' check (status in ('Pendiente', 'Verificado', 'Rechazado')),
   created_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.campaigns add column if not exists image_url text;
+alter table public.campaigns add column if not exists brief_image_url text;
+alter table public.materials add column if not exists image_url text;
 
 create or replace function public.is_coordinator()
 returns boolean
@@ -143,6 +150,20 @@ values
   ('pepsi-football', 'La fiesta del fútbol', 'Pepsi', 'En cierre', 92, 142, 1264800, 4260, 4600)
 on conflict (id) do nothing;
 
+insert into public.campaigns (id, name, brand, status, coverage, leads, revenue, delivered, goal, image_url, brief_image_url)
+values
+  ('llaves-higiene', 'Plan de higiene de carritos', 'Las Llaves', 'Activa', 41, 0, 0, 420, 2000, '/product-images/llaves-carritos.png', '/product-images/plan-desinfeccion-llaves.png'),
+  ('papel-lito', 'Visibilidad nacional', 'Papel Lito', 'Activa', 34, 0, 0, 79, 79, '/product-images/papel-lito.png', '/product-images/plan-papel-lito.png'),
+  ('lqm-orla', 'Afiches Orla', 'La Que Manda', 'Activa', 28, 0, 0, 1600, 10000, '/product-images/sangria-la-que-manda.png', '/product-images/plan-afiches-orla-lqm.png'),
+  ('multimarca-capuchones', 'Capuchones multimarca', 'Multimarca', 'Activa', 22, 0, 0, 40, 300, '/product-images/capuchones-multimarca.png', '/product-images/plan-capuchones-multimarca.png'),
+  ('pepsi-vaso', 'Combo Pepsi + vaso Tornasol', 'Pepsi', 'Activa', 46, 0, 0, 3200, 20000, '/product-images/vasos-pepsi.png', '/product-images/plan-pepsi-vaso.png'),
+  ('mavesa-combo', 'Combo de tapas con broches', 'Mavesa', 'Activa', 39, 0, 0, 8000, 50000, '/product-images/combo-mavesa-lock.png', '/product-images/plan-tapas-mavesa.png')
+on conflict (id) do update set
+  name = excluded.name,
+  brand = excluded.brand,
+  image_url = excluded.image_url,
+  brief_image_url = excluded.brief_image_url;
+
 insert into public.materials (id, name, sku, category, available, reserved, reorder_point, campaign_id)
 values
   ('display-pan', 'Exhibidor P.A.N. 65 años', 'POP-PAN-6501', 'Exhibición', 1840, 240, 400, 'pan-65'),
@@ -150,3 +171,46 @@ values
   ('stand-maltin', 'Stand Maltín Polar fútbol', 'POP-MP-2119', 'Activación', 96, 64, 120, 'maltin-football'),
   ('hablador-pepsi', 'Hablador Pepsi lata', 'POP-PPS-7812', 'Promoción', 1240, 80, 250, 'pepsi-football')
 on conflict (id) do nothing;
+
+insert into public.materials (id, name, sku, category, available, reserved, reorder_point, campaign_id, image_url)
+values
+  ('kit-llaves-carritos', 'Kit higiene de carritos Las Llaves', 'POP-LL-1509', 'Activación', 2000, 240, 400, 'llaves-higiene', '/product-images/llaves-carritos.png'),
+  ('papel-lito-79', 'Papel Lito', 'POP-LITO-0079', 'Visibilidad', 79, 0, 20, 'papel-lito', '/product-images/papel-lito.png'),
+  ('sangria-lqm', 'Sangría La Que Manda', 'POP-LQM-5001', 'Producto', 420, 80, 100, 'lqm-orla', '/product-images/sangria-la-que-manda.png'),
+  ('afiche-orla-lqm', 'Afiche Orla La Que Manda', 'POP-LQM-10000', 'Visibilidad', 10000, 1600, 2000, 'lqm-orla', null),
+  ('capuchon-multimarca', 'Capuchón multimarca', 'POP-CAP-0300', 'Visibilidad', 300, 40, 80, 'multimarca-capuchones', '/product-images/capuchones-multimarca.png'),
+  ('vaso-tornasol-pepsi', 'Vaso Tornasol Pepsi', 'POP-PEP-VASO', 'Promoción', 20000, 3200, 4000, 'pepsi-vaso', '/product-images/vasos-pepsi.png'),
+  ('combo-mavesa-lock', 'Combo Mavesa 500g + tapa Lock & Lock', 'POP-MAV-LOCK', 'Promoción', 50000, 8000, 10000, 'mavesa-combo', '/product-images/combo-mavesa-lock.png')
+on conflict (id) do update set
+  name = excluded.name,
+  category = excluded.category,
+  available = excluded.available,
+  reserved = excluded.reserved,
+  reorder_point = excluded.reorder_point,
+  campaign_id = excluded.campaign_id,
+  image_url = excluded.image_url;
+
+-- La ficha #6 pertenece al proyecto Afiches Orla, no al producto.
+update public.materials
+set image_url = null
+where id = 'afiche-orla-lqm';
+
+insert into storage.buckets (id, name, public)
+values ('product-images', 'product-images', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists product_images_public_read on storage.objects;
+create policy product_images_public_read
+  on storage.objects for select
+  using (bucket_id = 'product-images');
+
+drop policy if exists product_images_coordinator_insert on storage.objects;
+create policy product_images_coordinator_insert
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'product-images' and public.is_coordinator());
+
+drop policy if exists product_images_coordinator_update on storage.objects;
+create policy product_images_coordinator_update
+  on storage.objects for update to authenticated
+  using (bucket_id = 'product-images' and public.is_coordinator())
+  with check (bucket_id = 'product-images' and public.is_coordinator());

@@ -9,6 +9,7 @@ export type Material = {
   reserved: number
   reorderPoint: number
   campaign: string
+  imageUrl?: string
 }
 
 export type Campaign = {
@@ -21,6 +22,10 @@ export type Campaign = {
   revenue: number
   delivered: number
   goal: number
+  /** Foto del producto principal que representa la campaña. */
+  imageUrl?: string
+  /** Ficha técnica o plan de ejecución de la campaña. */
+  briefImageUrl?: string
 }
 
 export type Activity = {
@@ -82,6 +87,82 @@ export const initialMaterials: Material[] = [
     reorderPoint: 250,
     campaign: "Pepsi · Fútbol",
   },
+  {
+    id: "kit-llaves-carritos",
+    name: "Kit higiene de carritos Las Llaves",
+    sku: "POP-LL-1509",
+    category: "Activación",
+    available: 2000,
+    reserved: 240,
+    reorderPoint: 400,
+    campaign: "Las Llaves · Higiene",
+    imageUrl: "/product-images/llaves-carritos.png",
+  },
+  {
+    id: "papel-lito-79",
+    name: "Papel Lito",
+    sku: "POP-LITO-0079",
+    category: "Visibilidad",
+    available: 79,
+    reserved: 0,
+    reorderPoint: 20,
+    campaign: "Papel Lito · Visibilidad",
+    imageUrl: "/product-images/papel-lito.png",
+  },
+  {
+    id: "sangria-lqm",
+    name: "Sangría La Que Manda",
+    sku: "POP-LQM-5001",
+    category: "Producto",
+    available: 420,
+    reserved: 80,
+    reorderPoint: 100,
+    campaign: "La Que Manda · Afiches Orla",
+    imageUrl: "/product-images/sangria-la-que-manda.png",
+  },
+  {
+    id: "afiche-orla-lqm",
+    name: "Afiche Orla La Que Manda",
+    sku: "POP-LQM-10000",
+    category: "Visibilidad",
+    available: 10000,
+    reserved: 1600,
+    reorderPoint: 2000,
+    campaign: "La Que Manda · Afiches Orla",
+  },
+  {
+    id: "capuchon-multimarca",
+    name: "Capuchón multimarca",
+    sku: "POP-CAP-0300",
+    category: "Visibilidad",
+    available: 300,
+    reserved: 40,
+    reorderPoint: 80,
+    campaign: "Multimarca · Capuchones",
+    imageUrl: "/product-images/capuchones-multimarca.png",
+  },
+  {
+    id: "vaso-tornasol-pepsi",
+    name: "Vaso Tornasol Pepsi",
+    sku: "POP-PEP-VASO",
+    category: "Promoción",
+    available: 20000,
+    reserved: 3200,
+    reorderPoint: 4000,
+    campaign: "Pepsi · Vaso Tornasol",
+    imageUrl: "/product-images/vasos-pepsi.png",
+  },
+  {
+    id: "combo-mavesa-lock",
+    name: "Combo Mavesa 500g + tapa Lock & Lock",
+    sku: "POP-MAV-LOCK",
+    category: "Promoción",
+    available: 50000,
+    reserved: 8000,
+    reorderPoint: 10000,
+    campaign: "Mavesa · Combo tapas",
+    imageUrl: "/product-images/combo-mavesa-lock.png",
+  },
 ]
 
 export const campaigns: Campaign[] = [
@@ -118,7 +199,95 @@ export const campaigns: Campaign[] = [
     delivered: 4260,
     goal: 4600,
   },
+  {
+    id: "llaves-higiene",
+    name: "Plan de higiene de carritos",
+    brand: "Las Llaves",
+    status: "Activa",
+    coverage: 41,
+    leads: 0,
+    revenue: 0,
+    delivered: 420,
+    goal: 2000,
+    imageUrl: "/product-images/llaves-carritos.png",
+    briefImageUrl: "/product-images/plan-desinfeccion-llaves.png",
+  },
+  {
+    id: "papel-lito",
+    name: "Visibilidad nacional",
+    brand: "Papel Lito",
+    status: "Activa",
+    coverage: 34,
+    leads: 0,
+    revenue: 0,
+    delivered: 79,
+    goal: 79,
+    imageUrl: "/product-images/papel-lito.png",
+    briefImageUrl: "/product-images/plan-papel-lito.png",
+  },
+  {
+    id: "lqm-orla",
+    name: "Afiches Orla",
+    brand: "La Que Manda",
+    status: "Activa",
+    coverage: 28,
+    leads: 0,
+    revenue: 0,
+    delivered: 1600,
+    goal: 10000,
+    imageUrl: "/product-images/sangria-la-que-manda.png",
+    briefImageUrl: "/product-images/plan-afiches-orla-lqm.png",
+  },
+  {
+    id: "multimarca-capuchones",
+    name: "Capuchones multimarca",
+    brand: "Multimarca",
+    status: "Activa",
+    coverage: 22,
+    leads: 0,
+    revenue: 0,
+    delivered: 40,
+    goal: 300,
+    imageUrl: "/product-images/capuchones-multimarca.png",
+    briefImageUrl: "/product-images/plan-capuchones-multimarca.png",
+  },
+  {
+    id: "pepsi-vaso",
+    name: "Combo Pepsi + vaso Tornasol",
+    brand: "Pepsi",
+    status: "Activa",
+    coverage: 46,
+    leads: 0,
+    revenue: 0,
+    delivered: 3200,
+    goal: 20000,
+    imageUrl: "/product-images/vasos-pepsi.png",
+    briefImageUrl: "/product-images/plan-pepsi-vaso.png",
+  },
+  {
+    id: "mavesa-combo",
+    name: "Combo de tapas con broches",
+    brand: "Mavesa",
+    status: "Activa",
+    coverage: 39,
+    leads: 0,
+    revenue: 0,
+    delivered: 8000,
+    goal: 50000,
+    imageUrl: "/product-images/combo-mavesa-lock.png",
+    briefImageUrl: "/product-images/plan-tapas-mavesa.png",
+  },
 ]
+
+export function getMaterialImage(id: string, remoteImageUrl?: string | null) {
+  if (remoteImageUrl && !remoteImageUrl.includes("/plan-")) return remoteImageUrl
+  return initialMaterials.find((material) => material.id === id)?.imageUrl
+}
+
+export function getCampaignImage(id: string, remoteImageUrl?: string | null) {
+  if (remoteImageUrl && !remoteImageUrl.includes("/plan-")) return remoteImageUrl
+  return campaigns.find((campaign) => campaign.id === id)?.imageUrl
+}
 
 export const initialActivities: Activity[] = [
   {

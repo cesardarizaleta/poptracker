@@ -16,7 +16,8 @@ import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/client"
-import { campaigns, formatCurrency, formatNumber, initialActivities, initialMaterials, locations, materialHealth, sellers, type Activity as ActivityRecord, type Material } from "@/lib/pop-model"
+import { campaigns, formatCurrency, formatNumber, getMaterialImage, initialActivities, initialMaterials, locations, materialHealth, sellers, type Activity as ActivityRecord, type Material } from "@/lib/pop-model"
+import type { PopReportPayload, ReportExportKind } from "@/lib/report-types"
 import type { UserProfile } from "@/lib/supabase-types"
 
 type Operation = "delivery" | "lead"
@@ -142,6 +143,7 @@ function SummaryView({ deliveredUnits, freeStock, inventoryValue, leadCount, att
 
 export function PolarPopConsole({ onLogout, profile }: { onLogout: () => void; profile: UserProfile }) {
   const [activeView, setActiveView] = useState<View>("Resumen"); const [mobileOpen, setMobileOpen] = useState(false); const [operation, setOperation] = useState<Operation>("delivery"); const [period, setPeriod] = useState<Period>("month"); const [materials, setMaterials] = useState<Material[]>(initialMaterials); const [activities, setActivities] = useState<ActivityRecord[]>(initialActivities); const [deliveredUnits, setDeliveredUnits] = useState(12480); const [leadCount, setLeadCount] = useState(386); const [attributedRevenue, setAttributedRevenue] = useState(2864000); const [deliveryReference, setDeliveryReference] = useState(""); const [leadReference, setLeadReference] = useState(""); const [quantity, setQuantity] = useState("24"); const [amount, setAmount] = useState("25000"); const [selectedMaterial, setSelectedMaterial] = useState(initialMaterials[0].id); const [selectedLocation, setSelectedLocation] = useState(locations[0]); const [selectedSeller, setSelectedSeller] = useState(sellers[0]); const [formError, setFormError] = useState(""); const [formSuccess, setFormSuccess] = useState(""); const [notice, setNotice] = useState("")
+  const [exportingReport, setExportingReport] = useState<ReportExportKind | null>(null)
   useEffect(() => {
     let isMounted = true
 
@@ -150,7 +152,7 @@ export function PolarPopConsole({ onLogout, profile }: { onLogout: () => void; p
       const [materialResponse, deliveryResponse] = await Promise.all([
         supabase
           .from("materials")
-          .select("id, name, sku, category, available, reserved, reorder_point, campaign_id")
+          .select("id, name, sku, category, available, reserved, reorder_point, campaign_id, image_url")
           .order("name"),
         supabase
           .from("deliveries")
@@ -163,11 +165,12 @@ export function PolarPopConsole({ onLogout, profile }: { onLogout: () => void; p
 
       const materialRows = materialResponse.data ?? []
       if (materialRows.length > 0) {
-        setMaterials(materialRows.map((material) => ({
-          ...material,
-          reorderPoint: material.reorder_point,
-          campaign: material.campaign_id ?? "Sin campaña",
-        })))
+          setMaterials(materialRows.map((material) => ({
+            ...material,
+            reorderPoint: material.reorder_point,
+            campaign: material.campaign_id ?? "Sin campaña",
+            imageUrl: getMaterialImage(material.id, material.image_url),
+          })))
       }
 
       const deliveryRows = deliveryResponse.data ?? []
@@ -193,9 +196,33 @@ export function PolarPopConsole({ onLogout, profile }: { onLogout: () => void; p
     }
   }, [])
   const inventoryValue = useMemo(() => materials.reduce((total, material) => total + material.available, 0), [materials]); const freeStock = useMemo(() => materials.reduce((total, material) => total + material.available - material.reserved, 0), [materials])
+  async function requestReportExport(kind: ReportExportKind) {
+    if (exportingReport) return
+    setExportingReport(kind)
+    setNotice("Generando reporte corporativo…")
+    const payload: PopReportPayload = { kind, generatedAt: new Date().toISOString(), profile: { fullName: profile.full_name ?? "Coordinador POP", territory: profile.territory ?? "Red nacional" }, period: period === "week" ? "Semana" : period === "quarter" ? "Trimestre" : "Mes", deliveredUnits, freeStock, inventoryValue, leadCount, attributedRevenue, campaigns, materials, activities, territories: territoryStats.map(({ name, code, pdv, delivered, leads, stock, pending, campaign, seller, signal }) => ({ name, code, pdv, delivered, leads, stock, pending, campaign, seller, signal })), sellers: sellerPerformance }
+    try {
+      const response = await fetch("/api/reports/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      if (!response.ok) throw new Error("Export failed")
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `reporte-pop-${kind}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setNotice("Reporte corporativo descargado correctamente.")
+    } catch {
+      setNotice("No se pudo generar el reporte. Intenta nuevamente.")
+    } finally {
+      setExportingReport(null)
+    }
+  }
   function clearFeedback() { if (formError) setFormError(""); if (formSuccess) setFormSuccess("") }
   function addActivity(activity: ActivityRecord) { setActivities((current) => [activity, ...current].slice(0, 6)) }
-  function handleAction(message: string, view?: View) { setNotice(`${profile.full_name ?? "Coordinador"} · ${message}`); if (view) setActiveView(view); window.setTimeout(() => setNotice(""), 3200) }
+  function handleAction(message: string, view?: View) { const kind = message.includes("exportación ejecutiva") ? "operation" : message.includes("Catálogo listo para exportar") ? "inventory" : message.includes("Reporte ejecutivo generado") || message.includes("vista territorial está lista para compartir") ? "executive" : null; if (kind) { void requestReportExport(kind); return } setNotice(`${profile.full_name ?? "Coordinador"} · ${message}`); if (view) setActiveView(view); window.setTimeout(() => setNotice(""), 3200) }
   function navigate(view: View) { setActiveView(view); setMobileOpen(false); setNotice("") }
   function handleDeliverySubmit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const units = Number(quantity); const material = materials.find((item) => item.id === selectedMaterial); if (deliveryReference.trim().length < 4) { setFormError("Ingresa una referencia de entrega de al menos 4 caracteres."); return } if (!Number.isInteger(units) || units <= 0) { setFormError("La cantidad entregada debe ser un número entero mayor que cero."); return } if (!material || units > material.available - material.reserved) { setFormError("La cantidad supera el material disponible para entrega."); return } setMaterials((current) => current.map((item) => item.id === selectedMaterial ? { ...item, available: item.available - units } : item)); setDeliveredUnits((current) => current + units); setDeliveryReference(""); setFormError(""); setFormSuccess(`${formatNumber(units)} unidades registradas y vinculadas a ${selectedLocation}.`); addActivity({ id: `delivery-${Date.now()}`, type: "Entrega", title: `${formatNumber(units)} unidades entregadas`, detail: `${selectedSeller} · ${selectedLocation}`, time: "Ahora", status: "Verificado" }) }
   function handleLeadSubmit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const revenue = Number(amount); if (leadReference.trim().length < 4) { setFormError("Ingresa el código o referencia del lead para conservar la trazabilidad."); return } if (!Number.isFinite(revenue) || revenue <= 0) { setFormError("El ingreso atribuido debe ser un monto mayor que cero."); return } setLeadCount((current) => current + 1); setAttributedRevenue((current) => current + revenue); setLeadReference(""); setFormError(""); setFormSuccess(`Lead atribuido correctamente. Ingreso registrado: ${formatCurrency(revenue)}.`); addActivity({ id: `lead-${Date.now()}`, type: "Lead", title: "Lead atribuido a material POP", detail: `${selectedLocation} · ${formatCurrency(revenue)}`, time: "Ahora", status: "Verificado" }) }
